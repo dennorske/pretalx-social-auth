@@ -27,7 +27,6 @@ def pretalx_social_auth_settings(sender, request, **kwargs):
 
 @receiver(auth_html)
 def render_login_auth_options(sender, request, next_url=None, **kwargs):
-    print("render_login_auth_options")
     context = {}
     context["url_params"] = ""
     context["backends"] = {
@@ -35,12 +34,19 @@ def render_login_auth_options(sender, request, next_url=None, **kwargs):
         for class_name, be_class in all_backends().items()
     }
 
-    next_path = request.GET.get("next", next_url)
+    # In pretalx 2026.1+, auth.html is rendered via Django's form renderer which
+    # does not inject the HTTP request into the template context, so `request` may
+    # arrive as an empty string instead of an HttpRequest object.
+    if hasattr(request, "GET"):
+        next_path = request.GET.get("next", next_url)
+    else:
+        next_path = next_url
     if next_path:
         context["url_params"] = f"?next={next_path}"
 
+    http_request = request if hasattr(request, "GET") else None
     template = get_template("pretalx_social_auth/login.html")
-    html = template.render(context=context, request=request)
+    html = template.render(context=context, request=http_request)
     return html
 
 
