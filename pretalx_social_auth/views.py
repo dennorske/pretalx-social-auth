@@ -128,6 +128,16 @@ def get_session_timeout(
 
 def _do_login(backend, user, social_user):
     user.backend = f"{backend.__module__}.{backend.__class__.__name__}"
+
+    # Some pre-existing accounts (e.g. ones created before pretalx required
+    # a user code) may still have `code=None`. pretalx's own SpeakerProfile
+    # creation (e.g. when the CfP wizard calls user.get_speaker()) relies on
+    # user.code being set to compute a profile guid, and crashes with an
+    # IntegrityError otherwise. Saving here fills in a code via pretalx's
+    # own GenerateCode mixin before we hand off to the rest of pretalx.
+    if not getattr(user, "code", None):
+        user.save()
+
     # Get these details early to avoid any issues involved in the
     # session switch that happens when we call login().
     enable_session_expiration = backend.setting("SESSION_EXPIRATION", False)
