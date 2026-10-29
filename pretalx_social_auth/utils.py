@@ -84,6 +84,39 @@ def get_backend(name):
     return utils.get_backend(settings.AUTHENTICATION_BACKENDS, name)
 
 
+def login_buttons(event=None):
+    """Return the configured login buttons for the given event.
+
+    A list of (backend, label) pairs. Buttons configured for the event win; if
+    the event has none, we fall back to the global buttons (event=None). Any
+    configured backend we do not recognise is skipped, and backends without a
+    configured button fall back to their friendly name so nothing disappears.
+    """
+    from .models import SocialAuthButton
+
+    available = all_backends()
+    configured = list(
+        SocialAuthButton.objects.filter(event=event, enabled=True)
+        if event is not None
+        else []
+    )
+    if not configured and event is not None:
+        configured = list(SocialAuthButton.objects.filter(event=None, enabled=True))
+
+    buttons = [
+        (button.backend, str(button.label))
+        for button in configured
+        if button.backend in available
+    ]
+    labelled = {backend for backend, _ in buttons}
+    buttons += [
+        (class_name, f"Sign in with {backend_friendly_name(be_class)}")
+        for class_name, be_class in available.items()
+        if class_name not in labelled
+    ]
+    return buttons
+
+
 def user_backends(user):
     """
     Dictionary with the following keys:

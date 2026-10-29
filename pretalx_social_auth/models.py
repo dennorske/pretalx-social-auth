@@ -3,6 +3,7 @@ from typing import Union
 from django.conf import settings
 from django.db import models
 from django.db.utils import IntegrityError
+from i18nfield.fields import I18nCharField
 from social_core.utils import setting_name
 
 from .managers import UserSocialAuthManager
@@ -39,7 +40,34 @@ class SocialAuthSettings(models.Model):
         on_delete=models.CASCADE,
         related_name="pretalx_social_auth_settings",
     )
-    some_setting = models.CharField(max_length=10, default="A")
+
+
+class SocialAuthButton(models.Model):
+    """A login button shown on the sign-in page.
+
+    A button with an event only shows on that event's login page, while a button
+    without an event is a global button shown on the generic orga login page and
+    wherever an event has no buttons of its own.
+    """
+
+    event = models.ForeignKey(
+        to="event.Event",
+        on_delete=models.CASCADE,
+        related_name="pretalx_social_auth_buttons",
+        null=True,
+        blank=True,
+    )
+    backend = models.CharField(max_length=255)
+    label = I18nCharField(max_length=200)
+    order = models.PositiveIntegerField(default=0)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("order", "pk")
+        unique_together = ("event", "backend")
+
+    def __str__(self):
+        return f"{self.backend}: {self.label}"
 
 
 class AbstractUserSocialAuth(models.Model, DjangoUserMixin):

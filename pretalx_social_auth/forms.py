@@ -1,15 +1,23 @@
+from django.forms.models import inlineformset_factory
 from i18nfield.forms import I18nModelForm
+from pretalx.common.forms import I18nEventFormSet
+from pretalx.event.models import Event
 
-from .models import SocialAuthSettings
+from .models import SocialAuthButton
 
 
-class SocialAuthSettingsForm(I18nModelForm):
-
-    def __init__(self, *args, event=None, **kwargs):
-        self.instance, _ = SocialAuthSettings.objects.get_or_create(event=event)
-        super().__init__(*args, **kwargs, instance=self.instance, locales=event.locales)
-
+class SocialAuthButtonForm(I18nModelForm):
     class Meta:
-        model = SocialAuthSettings
-        fields = ("some_setting",)
-        widgets = {}
+        model = SocialAuthButton
+        fields = ("backend", "label", "order", "enabled")
+
+
+SocialAuthButtonFormSet = inlineformset_factory(
+    Event,
+    SocialAuthButton,
+    form=SocialAuthButtonForm,
+    formset=I18nEventFormSet,
+    fk_name="event",
+    can_delete=True,
+    extra=1,
+)

@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib import admin
 from social_core.utils import setting_name
 
-from .models import Association, Nonce, UserSocialAuth
+from .models import Association, Nonce, SocialAuthButton, UserSocialAuth
 
 
 @admin.register(UserSocialAuth)
@@ -48,6 +48,13 @@ class UserSocialAuthOption(admin.ModelAdmin):
             if not (field.many_to_one and field.related_model is None)
         )
         return list(set(names))
+
+
+@admin.register(SocialAuthButton)
+class SocialAuthButtonOption(admin.ModelAdmin):
+    list_display = ("event", "backend", "label", "order", "enabled")
+    list_filter = ("enabled",)
+    list_select_related = True
 
 
 @admin.register(Nonce)

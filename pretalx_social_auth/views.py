@@ -1,15 +1,18 @@
 from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME, login
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseRedirect
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
-from django.views.generic import FormView
+from django.views.generic import View
+from pretalx.common.forms import save_related_formset
 from pretalx.common.views.mixins import PermissionRequired
 from social_core.actions import do_auth, do_complete, do_disconnect
 
-from .forms import SocialAuthSettingsForm
+from .forms import SocialAuthButtonFormSet
+from .models import SocialAuthButton
 from .utils import maybe_require_post, psa
 
 NAMESPACE = "plugins:pretalx_social_auth"
@@ -19,28 +22,32 @@ NAMESPACE = "plugins:pretalx_social_auth"
 DEFAULT_SESSION_TIMEOUT = None
 
 
-class SocialAuthSettingsView(PermissionRequired, FormView):
+class SocialAuthSettingsView(PermissionRequired, View):
     permission_required = "orga.change_settings"
     template_name = "pretalx_social_auth/settings.html"
-    form_class = SocialAuthSettingsForm
+    formset_class = SocialAuthButtonFormSet
 
-    def get_success_url(self):
-        return self.request.path
-
-    def get_object(self):
-        return self.request.event
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["event"] = self.request.event
-        return kwargs
-
-    def form_valid(self, form):
-        form.save()
-        messages.success(
-            self.request, _("The pretalx Social Auth plugin settings were updated.")
+    def get_formset(self):
+        return self.formset_class(
+            self.request.POST if self.request.method == "POST" else None,
+            queryset=SocialAuthButton.objects.filter(event=self.request.event),
+            event=self.request.event,
+            prefix="button",
         )
-        return super().form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_data(formset=self.get_formset())
+        return self.render_to_response(context)
+
+    def post(self, request, *args, **kwargs):
+        formset = self.get_formset()
+        if not formset.is_valid():
+            return self.render_to_response(self.get_context_data(formset=formset))
+        save_related_formset(formset, parent=request.event, fk_field="event")
+        messages.success(
+            request, _("The pretalx Social Auth plugin settings were updated.")
+        )
+        return HttpResponseRedirect(request.path)
 
 
 @never_cache

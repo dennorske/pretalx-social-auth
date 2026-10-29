@@ -5,7 +5,7 @@ from pretalx.common.signals import auth_html, profile_bottom_html
 from pretalx.orga.signals import nav_event_settings
 from pretalx.person.signals import delete_user
 
-from .utils import all_backends, backend_friendly_name, user_backends
+from .utils import backend_friendly_name, login_buttons, user_backends
 
 
 @receiver(nav_event_settings)
@@ -29,10 +29,9 @@ def pretalx_social_auth_settings(sender, request, **kwargs):
 def render_login_auth_options(sender, request, next_url=None, **kwargs):
     context = {}
     context["url_params"] = ""
-    context["backends"] = {
-        class_name: backend_friendly_name(be_class)
-        for class_name, be_class in all_backends().items()
-    }
+    # ``sender`` is the event for event login views, and None for the generic
+    # orga login page, so both event and global buttons come through here.
+    context["backends"] = login_buttons(event=sender)
 
     # In pretalx 2026.1+, auth.html is rendered via Django's form renderer which
     # does not inject the HTTP request into the template context, so `request` may

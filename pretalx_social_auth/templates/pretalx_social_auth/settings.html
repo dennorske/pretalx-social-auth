@@ -1,9 +1,73 @@
 {% extends "orga/base.html" %}
+{% load formsets %}
 {% load i18n %}
 
 {% block extra_title %}pretalx Social Auth plugin Settings :: {% endblock extra_title %}
 
 {% block content %}
     <h2>pretalx Social Auth plugin Settings</h2>
-    {% include "orga/includes/base_form.html" %}
+    <p>
+        {% blocktranslate trimmed %}
+            Configure the login buttons shown on this event's sign-in page. Leave
+            this empty to keep the default buttons. Each button points at one
+            configured authentication backend, and its label is what visitors see.
+        {% endblocktranslate %}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="formset" data-formset data-formset-prefix="{{ formset.prefix }}">
+            {{ formset.management_form }}
+            {{ formset.non_form_errors }}
+
+            <div data-formset-body>
+                {% for form in formset %}
+                    <div class="row formset-row" data-formset-form>
+                        <div class="sr-only">{{ form.id }} {{ form.DELETE }}</div>
+                        <div class="col-md-4">{{ form.backend.as_field_group }}</div>
+                        <div class="col-md-4">{{ form.label.as_field_group }}</div>
+                        <div class="col-md-1">{{ form.order.as_field_group }}</div>
+                        <div class="col-md-2">{{ form.enabled.as_field_group }}</div>
+                        <div class="col-md-1 text-right flip">
+                            <button type="button" class="btn btn-danger" data-formset-delete-button>
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- djangofmt:ignore -->
+            <script type="form-template" data-formset-empty-form>
+                {% escapescript %}
+                    <div class="row formset-row" data-formset-form>
+                        <div class="sr-only">
+                            {{ formset.empty_form.id }}
+                            {{ formset.empty_form.DELETE }}
+                        </div>
+                        <div class="col-md-4">{{ formset.empty_form.backend.as_field_group }}</div>
+                        <div class="col-md-4">{{ formset.empty_form.label.as_field_group }}</div>
+                        <div class="col-md-1">{{ formset.empty_form.order.as_field_group }}</div>
+                        <div class="col-md-2">{{ formset.empty_form.enabled.as_field_group }}</div>
+                        <div class="col-md-1 text-right flip">
+                            <button type="button" class="btn btn-danger" data-formset-delete-button>
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endescapescript %}
+            </script>
+
+            <button type="button" class="btn btn-info" data-formset-add>
+                <i class="fa fa-plus"></i> {% translate "Add button" %}
+            </button>
+        </div>
+
+        <div class="submit-group">
+            <span></span>
+            <span>
+                <button type="submit" class="btn btn-success">{% translate "Save" %}</button>
+            </span>
+        </div>
+    </form>
 {% endblock content %}
