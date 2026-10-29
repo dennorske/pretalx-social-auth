@@ -94,12 +94,13 @@ def login_buttons(event=None):
     """
     from .models import SocialAuthButton
 
+    # pretalx passes an empty string rather than None on the generic orga login
+    # page, so only treat a real, saved event as an event here.
+    if not getattr(event, "pk", None):
+        event = None
+
     available = all_backends()
-    configured = list(
-        SocialAuthButton.objects.filter(event=event, enabled=True)
-        if event is not None
-        else []
-    )
+    configured = list(SocialAuthButton.objects.filter(event=event, enabled=True))
     if not configured and event is not None:
         configured = list(SocialAuthButton.objects.filter(event=None, enabled=True))
 

@@ -29,8 +29,8 @@ def pretalx_social_auth_settings(sender, request, **kwargs):
 def render_login_auth_options(sender, request, next_url=None, **kwargs):
     context = {}
     context["url_params"] = ""
-    # ``sender`` is the event for event login views, and None for the generic
-    # orga login page, so both event and global buttons come through here.
+    # ``sender`` is the event for event login views, and an empty string for the
+    # generic orga login page, so both event and global buttons come through here.
     context["backends"] = login_buttons(event=sender)
 
     # In pretalx 2026.1+, auth.html is rendered via Django's form renderer which
