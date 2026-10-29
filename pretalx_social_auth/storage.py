@@ -166,6 +166,18 @@ class DjangoNonceMixin(NonceMixin):
     def delete(cls, nonce):
         nonce.delete()
 
+    @classmethod
+    def consume(cls, server_url, timestamp, salt):
+        """Delete exactly the one matching nonce, returning whether it existed.
+
+        social-auth-core 6 uses this to claim a state nonce atomically during
+        the OAuth callback, so it must only report True for a single match.
+        """
+        deleted, _ = cls.objects.filter(
+            server_url=server_url, timestamp=timestamp, salt=salt
+        ).delete()
+        return deleted == 1
+
 
 class DjangoAssociationMixin(AssociationMixin):
     @classmethod
