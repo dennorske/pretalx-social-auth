@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
-from django.views.generic import View
+from django.views.generic import TemplateView
 from pretalx.common.forms import save_related_formset
 from pretalx.common.views.mixins import PermissionRequired
 from social_core.actions import do_auth, do_complete, do_disconnect
@@ -22,7 +22,7 @@ NAMESPACE = "plugins:pretalx_social_auth"
 DEFAULT_SESSION_TIMEOUT = None
 
 
-class SocialAuthSettingsView(PermissionRequired, View):
+class SocialAuthSettingsView(PermissionRequired, TemplateView):
     permission_required = "orga.change_settings"
     template_name = "pretalx_social_auth/settings.html"
     formset_class = SocialAuthButtonFormSet
@@ -35,9 +35,10 @@ class SocialAuthSettingsView(PermissionRequired, View):
             prefix="button",
         )
 
-    def get(self, request, *args, **kwargs):
-        context = self.get_context_data(formset=self.get_formset())
-        return self.render_to_response(context)
+    def get_context_data(self, **kwargs):
+        result = super().get_context_data(**kwargs)
+        result.setdefault("formset", self.get_formset())
+        return result
 
     def post(self, request, *args, **kwargs):
         formset = self.get_formset()
