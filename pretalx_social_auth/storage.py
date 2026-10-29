@@ -112,13 +112,24 @@ class DjangoUserMixin(UserMixin):
         return user_model._default_manager.filter(**{email_field + "__iexact": email})
 
     @classmethod
-    def get_social_auth(cls, provider, uid):
+    def get_social_auth(cls, provider, uid, id_key=None):
         if not isinstance(uid, str):
             uid = str(uid)
+        queryset = cls.objects.filter(provider=provider, uid=uid)
+        if id_key:
+            queryset = queryset.filter(id_key=id_key)
         try:
-            return cls.objects.get(provider=provider, uid=uid)
-        except cls.DoesNotExist:
+            return queryset.get()
+        except (cls.DoesNotExist, cls.MultipleObjectsReturned):
             return None
+
+    @classmethod
+    def get_social_auth_by_extra_data(cls, provider, key, value, id_key=""):
+        queryset = cls.objects.filter(provider=provider)
+        if id_key:
+            queryset = queryset.filter(id_key=id_key)
+        matches = [row for row in queryset if row.extra_data.get(key) == value]
+        return matches[0] if len(matches) == 1 else None
 
     @classmethod
     def get_social_auth_for_user(cls, user, provider=None, id=None):
@@ -132,7 +143,7 @@ class DjangoUserMixin(UserMixin):
         return qs
 
     @classmethod
-    def create_social_auth(cls, user, uid, provider):
+    def create_social_auth(cls, user, uid, provider, id_key=""):
         if not isinstance(uid, str):
             uid = str(uid)
         if hasattr(transaction, "atomic"):
@@ -142,10 +153,35 @@ class DjangoUserMixin(UserMixin):
             # stays undamaged by wrapping the create in an atomic.
             using = router.db_for_write(cls)
             with transaction.atomic(using=using):
-                social_auth = cls.objects.create(user=user, uid=uid, provider=provider)
+                social_auth = cls.objects.create(
+                    user=user, uid=uid, provider=provider, id_key=id_key
+                )
         else:
-            social_auth = cls.objects.create(user=user, uid=uid, provider=provider)
+            social_auth = cls.objects.create(
+                user=user, uid=uid, provider=provider, id_key=id_key
+            )
         return social_auth
+
+    @classmethod
+    def migrate_social_auth(cls, social, uid, id_key, *, evidence_key=None):
+        """Move an association onto a keyed identifier, returning the row.
+
+        social-auth-core 6 calls this when a stored unkeyed uid is replaced by a
+        keyed one, and expects the updated row back. The pipeline has already
+        checked the identifier evidence by this point, so evidence_key is only
+        carried for signature compatibility. We lock the row so a concurrent
+        login cannot race the update, and let the unique constraint surface any
+        clash to the caller.
+        """
+        if not isinstance(uid, str):
+            uid = str(uid)
+        using = router.db_for_write(cls)
+        with transaction.atomic(using=using):
+            current = cls.objects.select_for_update().get(pk=social.pk)
+            current.uid = uid
+            current.id_key = id_key or ""
+            current.save(update_fields=["uid", "id_key", "modified"])
+            return current
 
 
 class DjangoNonceMixin(NonceMixin):

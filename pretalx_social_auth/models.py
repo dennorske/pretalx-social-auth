@@ -78,6 +78,9 @@ class AbstractUserSocialAuth(models.Model, DjangoUserMixin):
     )
     provider = models.CharField(max_length=32)
     uid = models.CharField(max_length=UID_LENGTH, db_index=True)
+    # Which claim the uid came from, e.g. "sub" for OIDC or "id" for OAuth.
+    # Rows written before social-auth-core 6 carry an empty value.
+    id_key = models.CharField(max_length=64, blank=True, default="")
     extra_data = models.JSONField(default=dict, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -90,17 +93,31 @@ class AbstractUserSocialAuth(models.Model, DjangoUserMixin):
         abstract = True
 
     @classmethod
-    def get_social_auth(cls, provider: str, uid: Union[str, int]):
+    def get_social_auth(cls, provider: str, uid: Union[str, int], id_key=None):
         if not isinstance(uid, str):
             uid = str(uid)
-        for social in cls.objects.select_related("user").filter(
-            provider=provider, uid=uid
-        ):
+        queryset = cls.objects.select_related("user").filter(provider=provider, uid=uid)
+        if id_key:
+            queryset = queryset.filter(id_key=id_key)
+        for social in queryset:
             # We need to compare to filter out case-insensitive lookups in
             # some databases (MySQL/MariaDB)
             if social.uid == uid:
                 return social
         return None
+
+    @classmethod
+    def get_social_auth_by_extra_data(cls, provider, key, value, id_key=""):
+        """Return the association matching a stored extra_data entry.
+
+        Only an unambiguous match is returned, so multiple rows carrying the
+        same value are treated as no match.
+        """
+        queryset = cls.objects.select_related("user").filter(provider=provider)
+        if id_key:
+            queryset = queryset.filter(id_key=id_key)
+        matches = [row for row in queryset if row.extra_data.get(key) == value]
+        return matches[0] if len(matches) == 1 else None
 
     @classmethod
     def username_max_length(cls):
