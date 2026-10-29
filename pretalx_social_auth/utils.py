@@ -9,15 +9,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from social_core.backends import utils
 from social_core.backends.base import BaseAuth
+from social_core.exceptions import AuthConfigurationError
 from social_core.utils import get_strategy, module_member, setting_name
-
-# Breakng change in new social-auth-code so this will alias for backwards compat
-try:
-    from social_core.exceptions import MissingBackend  # social-auth-core < 6
-except ImportError:
-    from social_core.exceptions import (  # social-auth-core >= 6
-        AuthConfigurationError as MissingBackend,
-    )
 
 STRATEGY = getattr(
     settings, setting_name("STRATEGY"), "pretalx_social_auth.strategy.DjangoStrategy"
@@ -56,7 +49,7 @@ def psa(redirect_uri=None, load_strategy=load_strategy):
                 request.backend = load_backend(
                     request.social_strategy, backend, redirect_uri=uri
                 )
-            except MissingBackend:
+            except AuthConfigurationError:
                 raise Http404("Backend not found")
             return func(request, backend, *args, **kwargs)
 

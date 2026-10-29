@@ -14,7 +14,7 @@ maintainers = [
 
 dependencies = [
   "django>=3.2",
-  "social-auth-core>=4.4.1"
+  "social-auth-core>=6"
 ]
 
 [project.urls]

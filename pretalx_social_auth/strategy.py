@@ -74,7 +74,13 @@ class DjangoStrategy(BaseStrategy):
             value = resolve_url(value)
         return value
 
-    def request_data(self, merge=True):
+    def get_request_data(self, merge=True):
+        """Return the data of the current request, from GET or POST.
+
+        social-auth-core 6 renamed the old request_data() hook and made this
+        the new one. We only hand back the raw request data here, and let the
+        base request_data() deal with replaying a saved partial pipeline.
+        """
         if not self.request:
             return {}
         if merge:
