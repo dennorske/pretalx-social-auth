@@ -1,4 +1,5 @@
 from functools import wraps
+from os import environ
 from urllib.parse import quote
 
 from django.conf import settings
@@ -84,6 +85,9 @@ def get_backend(name):
     return utils.get_backend(settings.AUTHENTICATION_BACKENDS, name)
 
 
+GLOBAL_LABEL_ENV = "PRETALX_SOCIAL_AUTH_GLOBAL_LABEL"
+
+
 def login_buttons(event=None):
     """Return the configured login buttons for the given event.
 
@@ -110,8 +114,12 @@ def login_buttons(event=None):
         if button.backend in available
     ]
     labelled = {backend for backend, _ in buttons}
+    override = environ.get(GLOBAL_LABEL_ENV, "").strip()
     buttons += [
-        (class_name, f"Sign in with {backend_friendly_name(be_class)}")
+        (
+            class_name,
+            override or f"Sign in with {backend_friendly_name(be_class)}",
+        )
         for class_name, be_class in available.items()
         if class_name not in labelled
     ]
