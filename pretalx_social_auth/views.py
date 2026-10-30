@@ -23,9 +23,14 @@ DEFAULT_SESSION_TIMEOUT = None
 
 
 class SocialAuthSettingsView(PermissionRequired, TemplateView):
-    permission_required = "orga.change_settings"
+    # Match pretalx's own event settings pages, which gate on the event-scoped
+    # update permission rather than a global orga permission.
+    permission_required = "event.update_event"
     template_name = "pretalx_social_auth/settings.html"
     formset_class = SocialAuthButtonFormSet
+
+    def get_permission_object(self):
+        return self.request.event
 
     def get_formset(self):
         return self.formset_class(
